@@ -1,10 +1,10 @@
 import mongoose, {Schema, Types} from "mongoose";
-import jwt, { sign } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 
 const userSchema = new Schema(
     {
-        userName: {
+        username: {
             type: String,
             required: true,
             unique: true,
@@ -25,7 +25,7 @@ const userSchema = new Schema(
             trim: true,
             index: true,
         },
-        avtar: {
+        avatar: {
             type: String,  // coudinary url 
             required: true,
         },
@@ -39,8 +39,8 @@ const userSchema = new Schema(
             }
         ],
         password: {
-            types: String,
-            required: [true, 'Password is required'],
+            type: String,
+            required: [true, 'password is required'],
         },
         refreshToken: {
             type: String,
