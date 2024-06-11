@@ -7,7 +7,8 @@ import jwt from 'jsonwebtoken';
 export const verifyJWT = asyncHandler(async (req, _, next)=>{
     // if res or any other argument is not being used anywhere then just make it underscore _ its production grade practice
     try {
-        const token = req.cookie?.accessToken || req.header("Authorization").replace("Bearer ", "")
+        console.log("Cokkie: "+req.cookies)
+        const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "")
     
         if(!token) {
             throw new ApiError(401, "Unauthorized request")
