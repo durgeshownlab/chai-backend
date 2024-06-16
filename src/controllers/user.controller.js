@@ -13,12 +13,13 @@ const generateAccessAndRefreshTokens = async (userId)=>{
       const accessToken = user.generateAccessToken();
       const refreshToken = user.generateRefreshToken();
 
-      // console.log(accessToken, refreshToken)
-
+      
       user.refreshToken=refreshToken;
-
+      
       await user.save({validateBeforeSave: false})
 
+      // console.log('check :'+accessToken +" again: "+ refreshToken)
+      
       return {accessToken, refreshToken};
    }
    catch(error){
@@ -165,8 +166,8 @@ const logoutUser=asyncHandler(async (req, res)=>{
    const updatedUser=await User.findOneAndUpdate(
       req.user._id,
       {
-         $set: {
-            refreshToken: undefined
+         $unset: {
+            refreshToken: 1 // this removes fields from the document
          }
       },
       {
@@ -216,18 +217,20 @@ const refreshAccessToken=asyncHandler(async (req, res)=>{
          secure: true
       }
    
-      const {newRefreshToken, newAccessToken}=await generateAccessAndRefreshTokens(user._id);
+      const {accessToken, refreshToken}=await generateAccessAndRefreshTokens(user._id);
    
+      console.log(accessToken, refreshToken)
+
       return res
       .status(200)
-      .cookie("accessToken", newAccessToken, options)
-      .cookie("refreshToken",newRefreshToken, options)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
       .json(
          new ApiResponse(
             200,
             {
-               accessToken: newAccessToken,
-               refreshToken: newRefreshToken,
+               accessToken: accessToken,
+               refreshToken: refreshToken,
             },
             "Access token refresh"
          )
@@ -241,7 +244,9 @@ const refreshAccessToken=asyncHandler(async (req, res)=>{
 
 //controller for the change current password
 const changeCurrentPassword = asyncHandler(async (req, res)=>{
+   // console.log("documet form frint end "+req.body.oldPassword)
    const {oldPassword, newPassword} =  req.body;
+
 
    const user = await User.findById(req.user?._id);
    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
@@ -274,11 +279,12 @@ const getCurrentUser = asyncHandler(async (req, res)=>{
 const updateAccountDetails = asyncHandler(async (req, res)=>{
    const {fullName, email} = req.body;
    
+   
    if(!fullName || !email) {
       throw new ApiError(400, "All fields are required")
    }
-
-   const user = User.findByIdAndUpdate(
+   
+   const user = await User.findByIdAndUpdate(
       req.user?._id,
       {
          $set: {
@@ -289,6 +295,8 @@ const updateAccountDetails = asyncHandler(async (req, res)=>{
       {new: true}
    ).select("-password")
 
+   console.log(fullName, email, user)
+   
    return res 
    .status(200)
    .json(
@@ -310,7 +318,7 @@ const updateUserAvatar = asyncHandler(async (req, res)=>{
       throw new ApiError(400, 'failed to upload the avatar')
    }
    
-   const user = User.findByIdAndUpdate(
+   const user = await User.findByIdAndUpdate(
       req.user._id,
       {
          $set: {
@@ -362,7 +370,10 @@ const updateUserCoverImage=asyncHandler(async (req, res)=>{
 
 // controller for get user channel profile
 const getUserChannelProfile = asyncHandler(async (req, res)=>{
-   const {username}=req.body;
+   // const {username}=req.body || req.params.username;
+   const {username}=req.params;
+
+   console.log(req.body, req.params)
 
    if(!username?.trim()) {
       throw new ApiError(400, 'username is missing')
@@ -434,7 +445,7 @@ const getUserChannelProfile = asyncHandler(async (req, res)=>{
 });
 
 // controller for get watch history
-const getWatchHistory = asyncHandler(async (res, req)=>{
+const getWatchHistory = asyncHandler(async (req, res)=>{
    
    const user = await User.aggregate([
       {
