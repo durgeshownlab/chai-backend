@@ -1,12 +1,12 @@
+import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHanndler.js";
 
 const healthcheck = asyncHandler(async (req, res)=>{
     return res
     .status(200)
-    .json({
-        message: "Server health is excellent",
-        success:true
-    })
+    .json(
+        new ApiResponse(200, {message: "Server health is excellent"}, "Server is running fine")
+    )
 });
 
 export {
