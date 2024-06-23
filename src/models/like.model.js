@@ -2,13 +2,13 @@ import mongoose, {Schema, model} from "mongoose";
 
 const likeSchema = new Schema(
     {
-        comment: {
-            type: Schema.Types.ObjectId,
-            ref: "Comment"
-        },
         likedBy: {
             type: Schema.Types.ObjectId,
             ref: "User"
+        },
+        comment: {
+            type: Schema.Types.ObjectId,
+            ref: "Comment"
         },
         video: {
             type: Schema.Types.ObjectId,
