@@ -4,11 +4,12 @@ import { Video } from "../models/video.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHanndler.js";
+import { Subscription } from "../models/subscription.model.js";
 
 
 // controller for dashboard statictis
 const getChannelStats = asyncHandler(async (req, res)=>{
-    const channelStats = await User.aggregate([
+    const totalViewsAndVideos = await User.aggregate([
         {
             $match: {
                 _id: new mongoose.Types.ObjectId(req.user?._id)
@@ -16,10 +17,40 @@ const getChannelStats = asyncHandler(async (req, res)=>{
         },
         {
             $lookup: {
-                from: "subscriptions",
+                from: "videos",
                 localField: "_id",
-                foreignField: "channel",
-                as: "subscribers",
+                foreignField: "owner",
+                as: "videos"
+            }
+        },
+        {
+            $unwind: {
+                path: "$videos"
+            }
+        },
+        {
+            $group: {
+                _id: null,
+                totalViews: {
+                    $sum: "$videos.views"
+                },
+                totalVideos: {
+                    $sum: 1
+                }
+            }
+        },
+        {
+            $project: {
+                totalViews: 1,
+                totalVideos: 1
+            }
+        }
+    ]);
+
+    const totalLikes = await User.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(req.user?._id)
             }
         },
         {
@@ -27,61 +58,72 @@ const getChannelStats = asyncHandler(async (req, res)=>{
                 from: "videos",
                 localField: "_id",
                 foreignField: "owner",
-                as: "videos",
-                pipeline: [
-                    {
-                        $lookup: {
-                            from: "likes",
-                            localField: "_id",
-                            foreignField: "video",
-                            as: "likes"
-                        }
-                    },
-                    {
-                        $addFields: {
-                            totalLikes: {
-                                $size: "$likes"
-                            },
-                            totalViews: {
-                                $sum: "$videos.views"
-                            }
-                        }
-                    },
-                    {
-                        $project: {
-                            totalLikes: 1,
-                            totalViews: 1
-                        }
-                    }
-                ]
+                as: "videos"
             }
         },
         {
-            $addFields: {
-                totalSubscribers: {
-                    $size: "$subscribers"
-                },
-                totalVideos: {
-                    $size: "$videos"
-                },
+            $unwind: {
+                path: "$videos"
+            }
+        },
+        {
+            $lookup: {
+                from: "likes",
+                localField: "videos._id",
+                foreignField: "video",
+                as: "likes"
+            }
+        },
+        {
+            $unwind: {
+                path: "$likes"
+            }
+        },
+        {
+            $group: {
+                _id: "_id",
                 totalLikes: {
-                    $first: "$videos.totalLikes"
-                },
-                totalViews: {
-                    $first: "$videos.totalViews"
+                    $sum: 1
                 }
-                
             }
         },
         {
             $project: {
-                totalSubscribers: 1,
-                totalVideos: 1,
-                totalLikes: 1,
-                totalViews: 1                
+                totalLikes: 1
             }
         }
     ]);
+
+    const totalSubscriber = await Subscription.aggregate([
+        {
+            $match: {
+                channel: req.user?._id
+            }
+        },
+        {
+            $group: {
+                _id: "_id",
+                totalSubscriber: {
+                    $sum: 1
+                }
+            }
+        },
+        {
+            $project: {
+                totalSubscriber: 1
+            }
+        }
+    ]);
+
+    // console.log(totalViewsAndVideos, totalLikes, totalSubscriber)
+
+    const channelStats = {
+        totalViews: totalViewsAndVideos[0].totalViews,
+        totalVideos: totalViewsAndVideos[0].totalVideos,
+        totalLikes: totalLikes[0].totalLikes,
+        totalSubscriber: totalSubscriber[0].totalSubscriber
+    }
+
 
     if(!channelStats){
         throw new ApiError(500, "Error while fetching the statictics")
